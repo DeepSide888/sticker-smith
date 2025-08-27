@@ -65,56 +65,39 @@ const drawLabelToPDF = async (
   const contentWidth = LABEL_WIDTH - (padding * 2);
   const contentHeight = LABEL_HEIGHT - (padding * 2);
   
-  // Product image
-  const imageSize = 15;
-  const productImage = imageCache.get(product.reference);
-  
-  if (productImage) {
-    try {
-      // Convert image to base64
-      const canvas = document.createElement('canvas');
-      const ctx = canvas.getContext('2d');
-      if (ctx) {
-        canvas.width = imageSize * 3; // Higher resolution
-        canvas.height = imageSize * 3;
-        
-        const aspectRatio = productImage.width / productImage.height;
-        let drawWidth = canvas.width;
-        let drawHeight = canvas.height;
-        
-        if (aspectRatio > 1) {
-          drawHeight = canvas.width / aspectRatio;
-        } else {
-          drawWidth = canvas.height * aspectRatio;
-        }
-        
-        const offsetX = (canvas.width - drawWidth) / 2;
-        const offsetY = (canvas.height - drawHeight) / 2;
-        
-        ctx.drawImage(productImage, offsetX, offsetY, drawWidth, drawHeight);
-        const imageData = canvas.toDataURL('image/jpeg', 0.8);
-        
-        pdf.addImage(imageData, 'JPEG', contentX, contentY, imageSize, imageSize);
-      }
-    } catch (error) {
-      console.error('Error adding product image to PDF:', error);
-      drawPlaceholderImage(pdf, contentX, contentY, imageSize);
-    }
-  } else {
-    drawPlaceholderImage(pdf, contentX, contentY, imageSize);
-  }
-  
-  // Text content area
-  const textStartX = contentX + imageSize + 2;
-  const textWidth = contentWidth - imageSize - 2;
-  
-  // Product designation
+  // Point 50 logo/branding (top left)
   pdf.setFontSize(10);
   pdf.setFont('helvetica', 'bold');
-  pdf.setTextColor(17, 24, 39);
+  pdf.setTextColor(249, 115, 22); // Orange color
+  pdf.text('POINT', contentX, contentY + 6);
+  pdf.setFontSize(12);
+  pdf.text('50', contentX, contentY + 12);
   
-  const maxDesignationWidth = textWidth - 15; // Leave space for price
+  // Reference (top right)
+  pdf.setFontSize(7);
+  pdf.setFont('helvetica', 'normal');
+  pdf.setTextColor(0, 0, 0);
+  const refText = 'Ref:';
+  const refWidth = pdf.getTextWidth(refText);
+  pdf.text(refText, x + LABEL_WIDTH - padding - 15, contentY + 4);
+  
+  pdf.setFont('helvetica', 'bold');
+  pdf.text(product.reference, x + LABEL_WIDTH - padding, contentY + 4);
+  
+  // Codebar (under reference)
+  pdf.setFontSize(6);
+  pdf.setFont('helvetica', 'normal');
+  pdf.setTextColor(0, 0, 0);
+  const codeWidth = pdf.getTextWidth(product.codebar);
+  pdf.text(product.codebar, x + LABEL_WIDTH - padding - codeWidth, contentY + 8);
+  
+  // Product designation (center)
+  pdf.setFontSize(8);
+  pdf.setFont('helvetica', 'normal');
+  pdf.setTextColor(0, 0, 0);
+  
   let designation = product.designation;
+  const maxDesignationWidth = contentWidth - 4;
   
   // Truncate designation if too long
   const designationWidth = pdf.getTextWidth(designation);
@@ -125,58 +108,47 @@ const drawLabelToPDF = async (
     designation += '...';
   }
   
-  pdf.text(designation, textStartX, contentY + 4);
+  const designationX = x + (LABEL_WIDTH - pdf.getTextWidth(designation)) / 2;
+  pdf.text(designation, designationX, contentY + 18);
   
-  // Reference
-  pdf.setFontSize(7);
-  pdf.setFont('helvetica', 'normal');
-  pdf.setTextColor(107, 114, 128);
-  pdf.text(`Ref: ${product.reference}`, textStartX, contentY + 8);
-  
-  // Price
-  pdf.setFontSize(12);
+  // Large price number (center, prominent)
+  pdf.setFontSize(32);
   pdf.setFont('helvetica', 'bold');
-  pdf.setTextColor(220, 38, 38);
-  const priceText = `${product.prix.toFixed(2)} €`;
-  const priceWidth = pdf.getTextWidth(priceText);
-  pdf.text(priceText, x + LABEL_WIDTH - padding - priceWidth, contentY + 4);
+  pdf.setTextColor(249, 115, 22); // Orange color
   
-  // Quantity (if > 1)
-  if (product.qte > 1) {
-    pdf.setFontSize(7);
-    pdf.setFont('helvetica', 'normal');
-    pdf.setTextColor(107, 114, 128);
-    const qtyText = `Qté: ${product.qte}`;
-    const qtyWidth = pdf.getTextWidth(qtyText);
-    pdf.text(qtyText, x + LABEL_WIDTH - padding - qtyWidth, contentY + 8);
+  // Extract just the number part for large display
+  const priceNumber = Math.floor(product.prix).toString();
+  const priceNumberWidth = pdf.getTextWidth(priceNumber);
+  
+  // Euro symbol
+  pdf.setFontSize(24);
+  const euroWidth = pdf.getTextWidth('€');
+  
+  // Calculate total width for centering
+  const totalPriceWidth = priceNumberWidth + euroWidth + 2;
+  const priceStartX = x + (LABEL_WIDTH - totalPriceWidth) / 2;
+  
+  // Draw price number
+  pdf.setFontSize(32);
+  pdf.text(priceNumber, priceStartX, contentY + 30);
+  
+  // Draw euro symbol
+  pdf.setFontSize(24);
+  pdf.text('€', priceStartX + priceNumberWidth + 2, contentY + 30);
+  
+  // Decimal part (if not whole number)
+  if (product.prix % 1 !== 0) {
+    const decimal = (product.prix % 1).toFixed(2).substring(1);
+    pdf.setFontSize(12);
+    pdf.text(decimal, priceStartX + priceNumberWidth + euroWidth + 4, contentY + 26);
   }
   
-  // Barcode
-  try {
-    const barcodeCanvas = document.createElement('canvas');
-    JsBarcode(barcodeCanvas, product.codebar, {
-      format: "CODE128",
-      width: 1,
-      height: 30,
-      displayValue: false,
-    });
-    
-    const barcodeData = barcodeCanvas.toDataURL('image/png');
-    const barcodeWidth = contentWidth - 4;
-    const barcodeHeight = 6;
-    const barcodeY = y + LABEL_HEIGHT - padding - barcodeHeight - 2;
-    
-    pdf.addImage(barcodeData, 'PNG', contentX + 2, barcodeY, barcodeWidth, barcodeHeight);
-    
-    // Barcode text
+  // Quantity indicator (if > 1)
+  if (product.qte > 1) {
     pdf.setFontSize(6);
     pdf.setFont('helvetica', 'normal');
-    pdf.setTextColor(55, 65, 81);
-    const codeWidth = pdf.getTextWidth(product.codebar);
-    pdf.text(product.codebar, x + (LABEL_WIDTH - codeWidth) / 2, y + LABEL_HEIGHT - 1);
-    
-  } catch (error) {
-    console.error('Error generating barcode for PDF:', error);
+    pdf.setTextColor(107, 114, 128);
+    pdf.text(`Qté: ${product.qte}`, contentX, y + LABEL_HEIGHT - 2);
   }
 };
 

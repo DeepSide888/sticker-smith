@@ -58,7 +58,7 @@ export const LabelPreview = ({ products, onGeneratePDF, isGenerating }: LabelPre
     canvas.width = width;
     canvas.height = height;
 
-    // Clear canvas
+    // Clear canvas with white background
     ctx.fillStyle = '#ffffff';
     ctx.fillRect(0, 0, width, height);
 
@@ -67,102 +67,73 @@ export const LabelPreview = ({ products, onGeneratePDF, isGenerating }: LabelPre
     ctx.lineWidth = 1;
     ctx.strokeRect(0, 0, width, height);
 
-    // Product image
-    let productImage: HTMLImageElement | null = null;
-    if (currentProduct.image) {
-      try {
-        if (imageCache.has(currentProduct.reference)) {
-          productImage = imageCache.get(currentProduct.reference)!;
-        } else {
-          productImage = await loadImage(currentProduct.image);
-          setImageCache(prev => new Map(prev).set(currentProduct.reference, productImage!));
-        }
-      } catch (error) {
-        console.error('Error loading product image:', error);
-      }
-    }
-
-    if (productImage) {
-      const imgSize = 60;
-      const imgX = 8;
-      const imgY = 8;
-      
-      // Calculate aspect ratio
-      const aspectRatio = productImage.width / productImage.height;
-      let drawWidth = imgSize;
-      let drawHeight = imgSize;
-      
-      if (aspectRatio > 1) {
-        drawHeight = imgSize / aspectRatio;
-      } else {
-        drawWidth = imgSize * aspectRatio;
-      }
-      
-      ctx.drawImage(productImage, imgX, imgY, drawWidth, drawHeight);
-    } else {
-      // Placeholder for missing image
-      ctx.fillStyle = '#f3f4f6';
-      ctx.fillRect(8, 8, 60, 60);
-      ctx.fillStyle = '#9ca3af';
-      ctx.font = '10px Arial';
-      ctx.textAlign = 'center';
-      ctx.fillText('No Image', 38, 38);
-    }
-
-    // Product designation (main text)
-    ctx.fillStyle = '#111827';
+    // Point 50 logo/branding (top left)
+    ctx.fillStyle = '#f97316'; // Orange color
     ctx.font = 'bold 14px Arial';
     ctx.textAlign = 'left';
+    ctx.fillText('POINT', 8, 18);
+    ctx.font = 'bold 16px Arial';
+    ctx.fillText('50', 8, 35);
+
+    // Reference (top right)
+    ctx.fillStyle = '#000000';
+    ctx.font = '10px Arial';
+    ctx.textAlign = 'right';
+    ctx.fillText('Ref:', width - 40, 15);
+    ctx.font = 'bold 10px Arial';
+    ctx.fillText(currentProduct.reference, width - 8, 15);
+
+    // Codebar (under reference)
+    ctx.fillStyle = '#000000';
+    ctx.font = '9px Arial';
+    ctx.textAlign = 'right';
+    ctx.fillText(currentProduct.codebar, width - 8, 28);
+
+    // Product designation (center, larger)
+    ctx.fillStyle = '#000000';
+    ctx.font = '11px Arial';
+    ctx.textAlign = 'center';
     
-    const maxDesignationWidth = width - 85;
     let designation = currentProduct.designation;
+    const maxWidth = width - 20;
     
     // Truncate if too long
-    if (ctx.measureText(designation).width > maxDesignationWidth) {
-      while (ctx.measureText(designation + '...').width > maxDesignationWidth && designation.length > 0) {
+    if (ctx.measureText(designation).width > maxWidth) {
+      while (ctx.measureText(designation + '...').width > maxWidth && designation.length > 0) {
         designation = designation.slice(0, -1);
       }
       designation += '...';
     }
     
-    ctx.fillText(designation, 76, 25);
+    ctx.fillText(designation, width / 2, 55);
 
-    // Reference
-    ctx.fillStyle = '#6b7280';
-    ctx.font = '10px Arial';
-    ctx.fillText(`Ref: ${currentProduct.reference}`, 76, 40);
+    // Large price number (center, prominent)
+    ctx.fillStyle = '#f97316'; // Orange color
+    ctx.font = 'bold 48px Arial';
+    ctx.textAlign = 'center';
+    
+    // Extract just the number part for large display
+    const priceNumber = Math.floor(currentProduct.prix).toString();
+    ctx.fillText(priceNumber, width / 2 - 20, 105);
 
-    // Price (large, prominent)
-    ctx.fillStyle = '#dc2626';
-    ctx.font = 'bold 20px Arial';
-    ctx.textAlign = 'right';
-    ctx.fillText(`${currentProduct.prix.toFixed(2)} €`, width - 10, 25);
+    // Euro symbol
+    ctx.font = 'bold 32px Arial';
+    ctx.fillText('€', width / 2 + 30, 105);
 
-    // Quantity (if > 1)
+    // Decimal part (if not whole number)
+    if (currentProduct.prix % 1 !== 0) {
+      const decimal = (currentProduct.prix % 1).toFixed(2).substring(1);
+      ctx.font = 'bold 16px Arial';
+      ctx.fillText(decimal, width / 2 + 50, 90);
+    }
+
+    // Quantity indicator (if > 1)
     if (currentProduct.qte > 1) {
       ctx.fillStyle = '#6b7280';
-      ctx.font = '10px Arial';
-      ctx.fillText(`Qté: ${currentProduct.qte}`, width - 10, 40);
+      ctx.font = '9px Arial';
+      ctx.textAlign = 'left';
+      ctx.fillText(`Qté: ${currentProduct.qte}`, 8, height - 8);
     }
-
-    // Barcode at bottom
-    const barcodeDataUrl = generateBarcode(currentProduct.codebar);
-    if (barcodeDataUrl) {
-      try {
-        const barcodeImg = await loadImage(barcodeDataUrl);
-        const barcodeWidth = width - 16;
-        const barcodeHeight = 25;
-        ctx.drawImage(barcodeImg, 8, height - barcodeHeight - 8, barcodeWidth, barcodeHeight);
-      } catch (error) {
-        console.error('Error drawing barcode:', error);
-      }
-    }
-
-    // Codebar text
-    ctx.fillStyle = '#374151';
-    ctx.font = '8px Arial';
-    ctx.textAlign = 'center';
-    ctx.fillText(currentProduct.codebar, width / 2, height - 2);
   };
 
   useEffect(() => {
