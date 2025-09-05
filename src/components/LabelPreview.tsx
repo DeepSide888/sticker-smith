@@ -16,6 +16,7 @@ export const LabelPreview = ({ products, onGeneratePDF, isGenerating }: LabelPre
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [imageCache, setImageCache] = useState<Map<string, HTMLImageElement>>(new Map());
+  const [logoImage, setLogoImage] = useState<HTMLImageElement | null>(null);
 
   const currentProduct = products[currentIndex];
 
@@ -44,26 +45,37 @@ export const LabelPreview = ({ products, onGeneratePDF, isGenerating }: LabelPre
     });
   };
 
-  // Generate Point 54 logo programmatically
-  const drawLogo = (ctx: CanvasRenderingContext2D, x: number, y: number) => {
-    // Draw orange circle background
-    ctx.fillStyle = '#f97316';
-    ctx.beginPath();
-    ctx.arc(x + 15, y + 10, 12, 0, 2 * Math.PI);
-    ctx.fill();
-    
-    // Draw "POINT" text
-    ctx.fillStyle = '#f97316';
-    ctx.font = 'bold 12px Arial';
-    ctx.textAlign = 'left';
-    ctx.fillText('POINT', x + 30, y + 8);
-    
-    // Draw "54" in white on the circle
-    ctx.fillStyle = '#ffffff';
-    ctx.font = 'bold 14px Arial';
-    ctx.textAlign = 'center';
-    ctx.fillText('54', x + 15, y + 15);
+  // Load and convert logo to base64
+  const loadLogoAsBase64 = async (): Promise<string> => {
+    try {
+      const response = await fetch('/lovable-uploads/a8145a75-f92d-4234-b259-e4b5337a2eee.png');
+      const blob = await response.blob();
+      return new Promise((resolve) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result as string);
+        reader.readAsDataURL(blob);
+      });
+    } catch (error) {
+      console.error('Failed to load logo:', error);
+      return '';
+    }
   };
+
+  // Load logo image on component mount
+  useEffect(() => {
+    const loadLogo = async () => {
+      try {
+        const base64Logo = await loadLogoAsBase64();
+        if (base64Logo) {
+          const img = await loadImage(base64Logo);
+          setLogoImage(img);
+        }
+      } catch (error) {
+        console.error('Failed to load logo:', error);
+      }
+    };
+    loadLogo();
+  }, []);
 
   const drawLabel = async () => {
     if (!canvasRef.current || !currentProduct) return;
@@ -89,7 +101,15 @@ export const LabelPreview = ({ products, onGeneratePDF, isGenerating }: LabelPre
     ctx.strokeRect(0, 0, width, height);
 
     // Point 54 logo (top left)
-    drawLogo(ctx, 8, 8);
+    if (logoImage) {
+      ctx.drawImage(logoImage, 8, 8, 50, 25);
+    } else {
+      // Fallback text
+      ctx.fillStyle = '#f97316';
+      ctx.font = 'bold 14px Arial';
+      ctx.textAlign = 'left';
+      ctx.fillText('POINT 54', 8, 25);
+    }
 
     // Reference (top right)
     ctx.fillStyle = '#000000';
@@ -154,7 +174,7 @@ export const LabelPreview = ({ products, onGeneratePDF, isGenerating }: LabelPre
 
   useEffect(() => {
     drawLabel();
-  }, [currentProduct, imageCache]);
+  }, [currentProduct, imageCache, logoImage]);
 
   const nextLabel = () => {
     setCurrentIndex((prev) => (prev + 1) % products.length);

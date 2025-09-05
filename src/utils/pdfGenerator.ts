@@ -63,22 +63,26 @@ const drawLabelToPDF = async (
   const contentY = y + padding;
   const contentWidth = LABEL_WIDTH - (padding * 2);
   
-  // Point 54 logo (top left) - drawn programmatically
-  // Orange circle background
-  pdf.setFillColor(249, 115, 22);
-  pdf.circle(contentX + 4, contentY + 5, 3, 'F');
-  
-  // "POINT" text
-  pdf.setFontSize(8);
-  pdf.setFont('helvetica', 'bold');
-  pdf.setTextColor(249, 115, 22);
-  pdf.text('POINT', contentX + 8, contentY + 4);
-  
-  // "54" in white on the circle
-  pdf.setFontSize(10);
-  pdf.setFont('helvetica', 'bold');
-  pdf.setTextColor(255, 255, 255);
-  pdf.text('54', contentX + 4, contentY + 6);
+  // Point 54 logo (top left)
+  try {
+    const response = await fetch('/lovable-uploads/a8145a75-f92d-4234-b259-e4b5337a2eee.png');
+    const blob = await response.blob();
+    const base64Logo = await new Promise<string>((resolve) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result as string);
+      reader.readAsDataURL(blob);
+    });
+    
+    if (base64Logo) {
+      pdf.addImage(base64Logo, 'PNG', contentX, contentY + 1, 15, 7.5);
+    }
+  } catch (error) {
+    // Fallback to text if image fails to load
+    pdf.setFontSize(8);
+    pdf.setFont('helvetica', 'bold');
+    pdf.setTextColor(249, 115, 22);
+    pdf.text('POINT 54', contentX, contentY + 8);
+  }
 
   // Product image (bottom right)
   const imageSize = 10;
