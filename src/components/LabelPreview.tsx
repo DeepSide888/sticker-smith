@@ -16,6 +16,7 @@ export const LabelPreview = ({ products, onGeneratePDF, isGenerating }: LabelPre
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [imageCache, setImageCache] = useState<Map<string, HTMLImageElement>>(new Map());
+  const [logoImage, setLogoImage] = useState<HTMLImageElement | null>(null);
 
   const currentProduct = products[currentIndex];
 
@@ -44,6 +45,19 @@ export const LabelPreview = ({ products, onGeneratePDF, isGenerating }: LabelPre
     });
   };
 
+  // Load logo image on component mount
+  useEffect(() => {
+    const loadLogo = async () => {
+      try {
+        const img = await loadImage('/lovable-uploads/038b94f5-c915-4aaf-a8e9-1688ffb1d337.png');
+        setLogoImage(img);
+      } catch (error) {
+        console.error('Failed to load logo:', error);
+      }
+    };
+    loadLogo();
+  }, []);
+
   const drawLabel = async () => {
     if (!canvasRef.current || !currentProduct) return;
 
@@ -68,11 +82,9 @@ export const LabelPreview = ({ products, onGeneratePDF, isGenerating }: LabelPre
     ctx.strokeRect(0, 0, width, height);
 
     // Point 54 logo (top left)
-    const logo = new Image();
-    logo.src = '/lovable-uploads/038b94f5-c915-4aaf-a8e9-1688ffb1d337.png';
-    try {
-      ctx.drawImage(logo, 8, 8, 40, 20);
-    } catch (error) {
+    if (logoImage) {
+      ctx.drawImage(logoImage, 8, 8, 40, 20);
+    } else {
       // Fallback to text if image fails to load
       ctx.fillStyle = '#f97316';
       ctx.font = 'bold 14px Arial';
@@ -143,7 +155,7 @@ export const LabelPreview = ({ products, onGeneratePDF, isGenerating }: LabelPre
 
   useEffect(() => {
     drawLabel();
-  }, [currentProduct, imageCache]);
+  }, [currentProduct, imageCache, logoImage]);
 
   const nextLabel = () => {
     setCurrentIndex((prev) => (prev + 1) % products.length);
