@@ -67,13 +67,18 @@ export const LabelPreview = ({ products, onGeneratePDF, isGenerating }: LabelPre
     ctx.lineWidth = 1;
     ctx.strokeRect(0, 0, width, height);
 
-    // Point 50 logo/branding (top left)
-    ctx.fillStyle = '#f97316'; // Orange color
-    ctx.font = 'bold 14px Arial';
-    ctx.textAlign = 'left';
-    ctx.fillText('POINT', 8, 18);
-    ctx.font = 'bold 16px Arial';
-    ctx.fillText('50', 8, 35);
+    // Point 54 logo (top left)
+    const logo = new Image();
+    logo.src = '/lovable-uploads/038b94f5-c915-4aaf-a8e9-1688ffb1d337.png';
+    try {
+      ctx.drawImage(logo, 8, 8, 40, 20);
+    } catch (error) {
+      // Fallback to text if image fails to load
+      ctx.fillStyle = '#f97316';
+      ctx.font = 'bold 14px Arial';
+      ctx.textAlign = 'left';
+      ctx.fillText('POINT 54', 8, 25);
+    }
 
     // Reference (top right)
     ctx.fillStyle = '#000000';

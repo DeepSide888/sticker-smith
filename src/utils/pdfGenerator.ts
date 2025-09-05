@@ -63,13 +63,31 @@ const drawLabelToPDF = async (
   const contentY = y + padding;
   const contentWidth = LABEL_WIDTH - (padding * 2);
   
-  // Point 50 logo/branding (top left)
-  pdf.setFontSize(10);
-  pdf.setFont('helvetica', 'bold');
-  pdf.setTextColor(249, 115, 22); // Orange color
-  pdf.text('POINT', contentX, contentY + 6);
-  pdf.setFontSize(12);
-  pdf.text('50', contentX, contentY + 12);
+  // Point 54 logo (top left)
+  try {
+    const logoImg = new Image();
+    logoImg.src = '/lovable-uploads/038b94f5-c915-4aaf-a8e9-1688ffb1d337.png';
+    await new Promise((resolve, reject) => {
+      logoImg.onload = resolve;
+      logoImg.onerror = reject;
+    });
+    
+    const canvas = document.createElement('canvas');
+    const ctx = canvas.getContext('2d');
+    if (ctx) {
+      canvas.width = 120;
+      canvas.height = 60;
+      ctx.drawImage(logoImg, 0, 0, 120, 60);
+      const logoData = canvas.toDataURL('image/png');
+      pdf.addImage(logoData, 'PNG', contentX, contentY + 2, 12, 6);
+    }
+  } catch (error) {
+    // Fallback to text if image fails to load
+    pdf.setFontSize(8);
+    pdf.setFont('helvetica', 'bold');
+    pdf.setTextColor(249, 115, 22);
+    pdf.text('POINT 54', contentX, contentY + 8);
+  }
 
   // Product image (bottom right)
   const imageSize = 10;
