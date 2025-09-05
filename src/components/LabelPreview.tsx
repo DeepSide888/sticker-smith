@@ -16,7 +16,6 @@ export const LabelPreview = ({ products, onGeneratePDF, isGenerating }: LabelPre
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [imageCache, setImageCache] = useState<Map<string, HTMLImageElement>>(new Map());
-  const [logoImage, setLogoImage] = useState<HTMLImageElement | null>(null);
 
   const currentProduct = products[currentIndex];
 
@@ -45,18 +44,26 @@ export const LabelPreview = ({ products, onGeneratePDF, isGenerating }: LabelPre
     });
   };
 
-  // Load logo image on component mount
-  useEffect(() => {
-    const loadLogo = async () => {
-      try {
-        const img = await loadImage('/lovable-uploads/038b94f5-c915-4aaf-a8e9-1688ffb1d337.png');
-        setLogoImage(img);
-      } catch (error) {
-        console.error('Failed to load logo:', error);
-      }
-    };
-    loadLogo();
-  }, []);
+  // Generate Point 54 logo programmatically
+  const drawLogo = (ctx: CanvasRenderingContext2D, x: number, y: number) => {
+    // Draw orange circle background
+    ctx.fillStyle = '#f97316';
+    ctx.beginPath();
+    ctx.arc(x + 15, y + 10, 12, 0, 2 * Math.PI);
+    ctx.fill();
+    
+    // Draw "POINT" text
+    ctx.fillStyle = '#f97316';
+    ctx.font = 'bold 12px Arial';
+    ctx.textAlign = 'left';
+    ctx.fillText('POINT', x + 30, y + 8);
+    
+    // Draw "54" in white on the circle
+    ctx.fillStyle = '#ffffff';
+    ctx.font = 'bold 14px Arial';
+    ctx.textAlign = 'center';
+    ctx.fillText('54', x + 15, y + 15);
+  };
 
   const drawLabel = async () => {
     if (!canvasRef.current || !currentProduct) return;
@@ -82,15 +89,7 @@ export const LabelPreview = ({ products, onGeneratePDF, isGenerating }: LabelPre
     ctx.strokeRect(0, 0, width, height);
 
     // Point 54 logo (top left)
-    if (logoImage) {
-      ctx.drawImage(logoImage, 8, 8, 40, 20);
-    } else {
-      // Fallback to text if image fails to load
-      ctx.fillStyle = '#f97316';
-      ctx.font = 'bold 14px Arial';
-      ctx.textAlign = 'left';
-      ctx.fillText('POINT 54', 8, 25);
-    }
+    drawLogo(ctx, 8, 8);
 
     // Reference (top right)
     ctx.fillStyle = '#000000';
@@ -155,7 +154,7 @@ export const LabelPreview = ({ products, onGeneratePDF, isGenerating }: LabelPre
 
   useEffect(() => {
     drawLabel();
-  }, [currentProduct, imageCache, logoImage]);
+  }, [currentProduct, imageCache]);
 
   const nextLabel = () => {
     setCurrentIndex((prev) => (prev + 1) % products.length);
